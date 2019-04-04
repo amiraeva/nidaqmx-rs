@@ -4,6 +4,11 @@ version = "0.1.0"
 authors = ["Amer Safdari <amersafdari@gmail.com>"]
 edition = "2018"
 
+[profile.release]
+lto = true
+opt-level = 3
+codegen-units = 1
+
 [dependencies]
 nidaqmx-sys = {git = "https://github.com/amiraeva/nidaqmx-sys.git"}
 
