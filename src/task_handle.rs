@@ -22,7 +22,7 @@ pub struct RawTaskHandle(NonNullVoidPtr);
 impl RawTaskHandle {
 	// Caller must ensure pointer is a valid task handle
 	pub unsafe fn from_raw(ptr: *mut c_void) -> Option<Self> {
-		NonNullVoidPtr::new(ptr).map(|ptr| RawTaskHandle(ptr))
+		NonNullVoidPtr::new(ptr).map(RawTaskHandle)
 	}
 
 	// Caller must ensure pointer is set to a valid task handle

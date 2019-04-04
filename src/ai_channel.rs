@@ -4,12 +4,11 @@ use super::{
 	DAQ_CALLBACK_FREQ, SAMPLE_TIMEOUT_SECS, SCAN_WARNING,
 };
 
-use std::{fmt, pin::Pin, ptr};
+use std::{fmt, ptr};
 
 use futures::{
-	channel::mpsc::{self, UnboundedReceiver, UnboundedSender},
 	stream::Stream,
-	task::Waker,
+	sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
 	Poll,
 };
 
@@ -34,7 +33,7 @@ impl BatchedScan {
 		}
 	}
 
-	fn into_scan_iter<'a>(&'a self, sample_rate: usize) -> impl Iterator<Item = ScanData> + 'a {
+	fn as_scan_iter<'a>(&'a self, sample_rate: usize) -> impl Iterator<Item = ScanData> + 'a {
 		const TO_NANOSEC: u64 = 1e9 as u64;
 
 		let base_ts = self.timestamp;
@@ -43,15 +42,12 @@ impl BatchedScan {
 		let tstamp =
 			(1..data_len).map(move |ind| base_ts - ind as u64 * TO_NANOSEC / sample_rate as u64);
 
-		let scan_data = self
-			.data
+		self.data
 			.iter()
 			.rev()
 			.zip(tstamp)
 			.map(|(data, ts)| ScanData::new(*data, ts))
-			.rev();
-
-		scan_data
+			.rev()
 	}
 }
 
@@ -63,10 +59,7 @@ pub struct ScanData {
 
 impl ScanData {
 	fn new(data: [f64; NUM_CHANNELS], timestamp: u64) -> Self {
-		ScanData {
-			data: data,
-			timestamp,
-		}
+		ScanData { data, timestamp }
 	}
 }
 
@@ -149,10 +142,11 @@ pub struct AsyncAiChannel {
 
 impl Stream for AsyncAiChannel {
 	type Item = ScanData;
+	type Error = ();
 
-	fn poll_next(self: Pin<&mut Self>, wk: &Waker) -> Poll<Option<Self::Item>> {
-		let recv = &mut self.get_mut().recv;
-		Stream::poll_next(Pin::new(recv), wk)
+	#[inline]
+	fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+		self.recv.poll()
 	}
 }
 
@@ -199,7 +193,7 @@ fn async_read_callback_impl(
 		.map_err(|err_code| task_handle.chk_err_code(err_code))?;
 
 	batch
-		.into_scan_iter(sample_rate)
+		.as_scan_iter(sample_rate)
 		.try_for_each(|scan| send_channel.unbounded_send(scan))
 		.map_err(|_| ())?;
 

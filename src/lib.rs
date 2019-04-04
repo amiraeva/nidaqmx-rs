@@ -1,5 +1,3 @@
-#![feature(futures_api)]
-
 mod ai_channel;
 mod task_handle;
 mod co_channel;

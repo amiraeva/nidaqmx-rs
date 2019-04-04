@@ -5,12 +5,11 @@ use super::{
 	DAQ_CALLBACK_FREQ, EMPTY_CSTRING, SAMPLE_TIMEOUT_SECS, SCAN_WARNING,
 };
 
-use std::{ffi::CString, fmt, pin::Pin, ptr};
+use std::{ffi::CString, fmt, ptr};
 
 use futures::{
-	channel::mpsc::{self, UnboundedReceiver, UnboundedSender},
 	stream::Stream,
-	task::Waker,
+	sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
 	Poll,
 };
 
@@ -57,7 +56,7 @@ impl BatchedScan {
 		}
 	}
 
-	fn into_encoder_reading_iter<'a>(
+	fn as_encoder_reading_iter<'a>(
 		&'a self,
 		sample_rate: usize,
 	) -> impl Iterator<Item = EncoderReading> + 'a {
@@ -69,15 +68,12 @@ impl BatchedScan {
 		let tstamp =
 			(1..data_len).map(move |ind| base_ts - ind as u64 * TO_NANOSEC / sample_rate as u64);
 
-		let scan_data = self
-			.data
+		self.data
 			.iter()
 			.rev()
 			.zip(tstamp)
 			.map(|(pos, ts)| EncoderReading::new(ts, *pos))
-			.rev();
-
-		scan_data
+			.rev()
 	}
 }
 
@@ -187,10 +183,10 @@ pub struct AsyncEncoderChannel {
 
 impl Stream for AsyncEncoderChannel {
 	type Item = EncoderReading;
+	type Error = ();
 
-	fn poll_next(self: Pin<&mut Self>, wk: &Waker) -> Poll<Option<Self::Item>> {
-		let recv = &mut self.get_mut().recv;
-		Stream::poll_next(Pin::new(recv), wk)
+	fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+		self.recv.poll()
 	}
 }
 
@@ -241,7 +237,7 @@ fn async_read_callback_impl(
 		.map_err(|err_code| task_handle.chk_err_code(err_code))?;
 
 	batch
-		.into_encoder_reading_iter(sample_rate)
+		.as_encoder_reading_iter(sample_rate)
 		.try_for_each(|enc| send_channel.unbounded_send(enc))
 		.map_err(|_| ())?;
 

@@ -73,7 +73,7 @@ pub unsafe extern "C" fn raw_read_callback_impl<T>(
 			(callback_wrapper.func)(&mut callback_wrapper.data, &mut task_handle, n_samps);
 
 		// Don't free the boxed callback if it succeeded
-		if let Ok(_) = callback_result {
+		if callback_result.is_ok() {
 			Box::into_raw(callback_wrapper);
 		} else {
 			task_handle.clear_task();
