@@ -1,0 +1,11 @@
+[package]
+name = "nidaqmx"
+version = "0.1.0"
+authors = ["Amer Safdari <amersafdari@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+nidaqmx-sys = {git = "https://github.com/amiraeva/nidaqmx-sys.git"}
+
+time = "^0.1"
+futures = "^0.1"
