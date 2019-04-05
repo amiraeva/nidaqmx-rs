@@ -76,7 +76,7 @@ pub struct AiChannel {
 }
 
 impl AiChannel {
-	pub fn new<S: AsRef<str>>(clk_src: S, sample_rate: usize) -> Self {
+	pub fn new<S1: AsRef<str>, S2: AsRef<str>>(clk_src: S1, dev: S2, sample_rate: usize) -> Self {
 		let task_handle = TaskHandle::new();
 
 		let mut ai_channel = AiChannel {
@@ -85,16 +85,16 @@ impl AiChannel {
 			batch_size: sample_rate / DAQ_CALLBACK_FREQ,
 		};
 
-		ai_channel.init(clk_src.as_ref());
+		ai_channel.init(clk_src.as_ref(), dev.as_ref());
 
 		ai_channel
 	}
 
-	fn init(&mut self, clk_src: &str) {
+	fn init(&mut self, clk_src: &str, dev: &str) {
 		let internal_buf_size = 10 * self.sample_rate as u64;
 
 		self.task_handle
-			.create_ai_volt_chan("Dev1/ai0:1", VOLTAGE_SPAN);
+			.create_ai_volt_chan(dev, VOLTAGE_SPAN);
 
 		self.task_handle.configure_sample_clock(
 			clk_src,
